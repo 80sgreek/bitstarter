@@ -21,11 +21,15 @@ References:
    - https://developer.mozilla.org/en-US/docs/JSON#JSON_in_Firefox_2
 */
 
+//WARNING!!! HACKED TO GET WORK DONE IN TIME, ASYNC COULD BE HANDLED BETTER
+
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
+var URL_DEFAULT = "http://www.google.com";
+var rest = require('restler');
 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
@@ -44,16 +48,24 @@ var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
 
-var checkHtmlFile = function(htmlfile, checksfile) {
-    $ = cheerioHtmlFile(htmlfile);
-    var checks = loadChecks(checksfile).sort();
-    var out = {};
-    for(var ii in checks) {
-        var present = $(checks[ii]).length > 0;
-        out[checks[ii]] = present;
-    }
-    return out;
+var getResp = function(url, cb){
+	rest.get(url).on('complete',function(response){ cb(response);});
 };
+
+var checkHtmlFile = function(url, checksfile) {
+	var html = getResp(url, function(html){
+//		console.log(html);
+	
+	$ = cheerio.load(html);
+	var checks = loadChecks(checksfile).sort();
+	var out = {};
+	for(var ii in checks) {
+        	var present = $(checks[ii]).length > 0;
+        	out[checks[ii]] = present;
+    	}
+    	console.log(JSON.stringify(out, null, 4));
+	});
+}
 
 var clone = function(fn) {
     // Workaround for commander.js issue.
@@ -64,11 +76,13 @@ var clone = function(fn) {
 if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
-        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+        .option('-u, --url <url>', 'Path to web application', URL_DEFAULT)
+	.parse(process.argv);
+
+ checkHtmlFile(program.url, program.checks);
+//    	var outJson = JSON.stringify(checkJson, null, 4);
+	    
+//	console.log(outJson);
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
